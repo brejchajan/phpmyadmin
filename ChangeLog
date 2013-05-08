@@ -1,12 +1,16 @@
 phpMyAdmin - ChangeLog
 ======================
 
+<<<<<<< HEAD
 4.1.0.0 (not yet released)
 + rfe #499 On user creation, warn if the user already exists
 + Use indeterminate check all checkbox in server privileges
 + Break server_status.php functions into smaller functions
 + PMA_DBI functions in database_interface.lib.php renamed to be compliant with PEAR standards
 + [interface] Make warning about existing config directory clearer
++ rfe #1414 Allow specifying controlport
++ PMA_DBI functions in database interface libraries renamed to be compliant with PEAR standards
++ rfe #1412 Creating a view from an empty set of results
 
 4.0.1.0 (not yet released)
 - bug #3879 Import broken for CSV using LOAD DATA
@@ -21,9 +25,11 @@ phpMyAdmin - ChangeLog
 - bug #3900 CSP WARN in Firefox console
 - bug #3901 Setup script warning for config auth (stored login data) shows link BBcode
 - bug #3895 [browse] Fixed getting BLOB data
+- bug #3905 [export] Custom Exporting exports all databases
+- bug #3909 [import] Import of CSV FIle to selected table doesn't work
 - bug #3904 Browsing an empty table should not display its Structure
 
-4.0.0.0 (not yet released)
+4.0.0.0 (2013-05-03)
 + Patch #3481047 for rfe #3480477 Insert as new row enhancement
 + Patch #3480999 Activate codemirror in the query window
 - Patch #3495284 XML Import - fix message and redirect
@@ -135,8 +141,6 @@ underscore
 - [security] Global variables overwrite in export.php, reported by Janek Vind
   (see PMASA-2013-5)
 - bug #3892 [export] SQL Export files are empty
-
-3.5.9.0 (not yet released)
 
 3.5.8.1 (2013-04-24)
 - [security] Remote code execution (preg_replace), reported by Janek Vind

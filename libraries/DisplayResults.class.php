@@ -2509,7 +2509,7 @@ class PMA_DisplayResults
             || ($_SESSION['tmp_user_values']['disp_direction']
                 == self::DISP_DIR_HORIZONTAL_FLIPPED);
 
-        while ($row = PMA_DBI_fetch_row($dt_result)) {
+        while ($row = PMA_DBI_fetchRow($dt_result)) {
 
             // "vertical display" mode stuff
             $table_body_html .= $this->_getVerticalDisplaySupportSegments(
@@ -2860,7 +2860,7 @@ class PMA_DisplayResults
 
                 // PMA_mysql_fetch_fields returns BLOB in place of
                 // TEXT fields type so we have to ensure it's really a BLOB
-                $field_flags = PMA_DBI_field_flags($dt_result, $i);
+                $field_flags = PMA_DBI_fieldFlags($dt_result, $i);
 
                 $vertical_display['data'][$row_no][$i]
                     = $this->_getDataCellForBlobColumns(
@@ -3839,7 +3839,7 @@ class PMA_DisplayResults
     ) {
 
         $is_analyse = $this->__get('is_analyse');
-        $field_flags = PMA_DBI_field_flags($dt_result, $col_index);
+        $field_flags = PMA_DBI_fieldFlags($dt_result, $col_index);
         if (stristr($field_flags, self::BINARY_FIELD)
             && ($GLOBALS['cfg']['ProtectBinary'] == 'all'
             || $GLOBALS['cfg']['ProtectBinary'] == 'noblob')
@@ -4773,7 +4773,7 @@ class PMA_DisplayResults
             if ($sorted_column_index !== false) {
 
                 // fetch first row of the result set
-                $row = PMA_DBI_fetch_row($dt_result);
+                $row = PMA_DBI_fetchRow($dt_result);
 
                 // initializing default arguments
                 $default_function = '_mimeDefaultFunction';
@@ -4802,8 +4802,8 @@ class PMA_DisplayResults
                 );
 
                 // fetch last row of the result set
-                PMA_DBI_data_seek($dt_result, $this->__get('num_rows') - 1);
-                $row = PMA_DBI_fetch_row($dt_result);
+                PMA_DBI_dataSeek($dt_result, $this->__get('num_rows') - 1);
+                $row = PMA_DBI_fetchRow($dt_result);
 
                 // check for non printable sorted row data
                 $meta = $fields_meta[$sorted_column_index];
@@ -4826,7 +4826,7 @@ class PMA_DisplayResults
                 );
 
                 // reset to first row for the loop in _getTableBody()
-                PMA_DBI_data_seek($dt_result, 0);
+                PMA_DBI_dataSeek($dt_result, 0);
 
                 // we could also use here $sort_expression_nodirection
                 return ' [' . htmlspecialchars($sort_column)
@@ -5073,8 +5073,8 @@ class PMA_DisplayResults
         }
 
         // fetch last row of the result set
-        PMA_DBI_data_seek($dt_result, $this->__get('num_rows') - 1);
-        $row = PMA_DBI_fetch_row($dt_result);
+        PMA_DBI_dataSeek($dt_result, $this->__get('num_rows') - 1);
+        $row = PMA_DBI_fetchRow($dt_result);
 
         // $clause_is_unique is needed by getTable() to generate the proper param
         // in the multi-edit and multi-delete form
@@ -5087,7 +5087,7 @@ class PMA_DisplayResults
             );
 
         // reset to first row for the loop in _getTableBody()
-        PMA_DBI_data_seek($dt_result, 0);
+        PMA_DBI_dataSeek($dt_result, 0);
 
         $links_html .= '<input type="hidden" name="clause_is_unique"'
             .' value="' . $clause_is_unique . '" />' . "\n";
@@ -5136,12 +5136,70 @@ class PMA_DisplayResults
 
     } // end of the '_getPlacedTableNavigations()' function
 
+    /**
+     * Generates HTML to display the Create view in span tag
+     *
+     * @param array  $analyzed_sql the analyzed Query
+     * @param string $url_query    String with URL Parameters
+     *
+     * @return string
+     *
+     * @access private
+     *
+     * @see _getResultsOperations()
+     */   
+    private function _getLinkForCreateView($analyzed_sql, $url_query)
+    {
+        $results_operations_html = '';
+        if (!PMA_DRIZZLE && !isset($analyzed_sql[0]['queryflags']['procedure'])) {
+
+            $ajax_class = ' ajax';
+
+            $results_operations_html .= '<span>'
+                . PMA_Util::linkOrButton(
+                    'view_create.php' . $url_query,
+                    PMA_Util::getIcon(
+                        'b_views.png', __('Create view'), true
+                    ),
+                    array('class' => 'create_view' . $ajax_class), true, true, ''
+                )
+                . '</span>' . "\n";
+        }
+        return $results_operations_html;
+    
+    }
+    
+    /**
+     * Calls the _getResultsOperations with $only_view as true
+     *
+     * @param array $analyzed_sql the analyzed Query
+     *
+     * @return string
+     *
+     * @access public
+     *
+     */   
+    public function getCreateViewQueryResultOp($analyzed_sql)
+    {
+        
+        $results_operations_html = '';
+        $fake_display_mode       = array();
+        //calling to _getResultOperations with a fake display mode
+        //and setting only_view parameter to be true to generate just view
+        $results_operations_html .= $this->_getResultsOperations(
+                                            $fake_display_mode, 
+                                            $analyzed_sql, 
+                                            true
+                                            );
+        return $results_operations_html;
+    }
 
     /**
      * Get operations that are available on results.
      *
-     * @param array $the_disp_mode the display mode
-     * @param array $analyzed_sql  the analyzed query
+     * @param array   $the_disp_mode the display mode
+     * @param array   $analyzed_sql  the analyzed query
+     * @param boolean $only_view     Whether to show only view
      *
      * @return string $results_operations_html  html content
      *
@@ -5149,31 +5207,42 @@ class PMA_DisplayResults
      *
      * @see     getTable()
      */
-    private function _getResultsOperations($the_disp_mode, $analyzed_sql)
+    private function _getResultsOperations(
+        $the_disp_mode, $analyzed_sql, $only_view = false
+    )
     {
-
         $results_operations_html = '';
         $fields_meta = $this->__get('fields_meta'); // To safe use in foreach
         $header_shown = false;
         $header = '<fieldset><legend>' . __('Query results operations')
             . '</legend>';
-
-        if (($the_disp_mode[6] == '1') || ($the_disp_mode[9] == '1')) {
-            // Displays "printable view" link if required
-            if ($the_disp_mode[9] == '1') {
-
-                if (!$header_shown) {
-                    $results_operations_html .= $header;
-                    $header_shown = true;
-                }
-
-                $_url_params = array(
+            
+        $_url_params = array(
                     'db'        => $this->__get('db'),
                     'table'     => $this->__get('table'),
                     'printview' => '1',
                     'sql_query' => $this->__get('sql_query'),
                 );
-                $url_query = PMA_generate_common_url($_url_params);
+        $url_query = PMA_generate_common_url($_url_params);
+        
+        if (!$header_shown) {
+            $results_operations_html .= $header;
+            $header_shown = true;
+        }
+        // if empty result set was produced we need to 
+        // show only view and not other options
+        if ($only_view == true) {
+            $results_operations_html .= $this->_getLinkForCreateView($analyzed_sql,$url_query);
+
+            if ($header_shown) {
+                $results_operations_html .= '</fieldset><br />';
+            }
+         return $results_operations_html;
+        }      
+
+        if (($the_disp_mode[6] == '1') || ($the_disp_mode[9] == '1')) {
+            // Displays "printable view" link if required
+            if ($the_disp_mode[9] == '1') {
 
                 $results_operations_html
                     .= PMA_Util::linkOrButton(
@@ -5317,20 +5386,7 @@ class PMA_DisplayResults
             $header_shown = true;
         }
 
-        if (!PMA_DRIZZLE && !isset($analyzed_sql[0]['queryflags']['procedure'])) {
-
-            $ajax_class = ' ajax';
-
-            $results_operations_html .= '<span>'
-                . PMA_Util::linkOrButton(
-                    'view_create.php' . $url_query,
-                    PMA_Util::getIcon(
-                        'b_views.png', __('Create view'), true
-                    ),
-                    array('class' => 'create_view' . $ajax_class), true, true, ''
-                )
-                . '</span>' . "\n";
-        }
+        $results_operations_html .= $this->_getLinkForCreateView($analyzed_sql,$url_query);
 
         if ($header_shown) {
             $results_operations_html .= '</fieldset><br />';
@@ -5511,13 +5567,13 @@ class PMA_DisplayResults
 
                 $dispresult = PMA_DBI_tryQuery($dispsql, null, PMA_DBI_QUERY_STORE);
 
-                if ($dispresult && PMA_DBI_num_rows($dispresult) > 0) {
-                    list($dispval) = PMA_DBI_fetch_row($dispresult, 0);
+                if ($dispresult && PMA_DBI_numRows($dispresult) > 0) {
+                    list($dispval) = PMA_DBI_fetchRow($dispresult, 0);
                 } else {
                     $dispval = __('Link not found');
                 }
 
-                @PMA_DBI_free_result($dispresult);
+                @PMA_DBI_freeResult($dispresult);
 
             } else {
                 $dispval     = '';

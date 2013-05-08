@@ -27,6 +27,7 @@ $post_params = array(
         'export_type',
         'export_method',
         'quick_or_custom',
+        'db_select',
         'table_select',
         'limit_to',
         'limit_from',
@@ -832,7 +833,7 @@ do {
                     $sql_query = preg_replace('%;\s*$%', '', $sql_query);
                 }
                 $local_query = $sql_query . $add_query;
-                PMA_DBI_select_db($db);
+                PMA_DBI_selectDb($db);
             } else {
                 $local_query  = 'SELECT * FROM ' . PMA_Util::backquote($db)
                     . '.' . PMA_Util::backquote($table) . $add_query;
